@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0b100e">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="临“界”刹车">
+  <meta name="format-detection" content="telephone=no">
+  <meta name="description" content="临“界”刹车：驾驶新能源 SUV，在 500 米内利用电制动与液压制动刹停，避免撞上路灯。">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='2' fill='%230d1210'/%3E%3Crect x='6' y='16' width='5' height='10' fill='%23df5635'/%3E%3Crect x='14' y='8' width='5' height='18' fill='%23f0b34c'/%3E%3Crect x='22' y='12' width='4' height='14' fill='%23e8ddc8'/%3E%3C/svg%3E">
+  <title>临“界”刹车 · EV 制动测试</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="page-atmosphere" aria-hidden="true">
+    <div class="page-grid"></div>
+    <div class="page-watermark">500</div>
+    <div class="page-side-label page-side-label--left">HYDRAULIC + REGEN<br>BRAKE TEST / 500 M</div>
+    <div class="page-side-label page-side-label--right">EV SYSTEM READY<br>DM / MOTOR LAB 2026</div>
+  </div>
+
+  <main class="game" id="app" data-phase="intro">
+    <section class="world" id="world">
+      <canvas id="scene" aria-label="夜晚公路追逐视角，一辆 SUV 正驶向 500 米外的路灯障碍"></canvas>
+      <div class="world-grade" aria-hidden="true"></div>
+      <div class="world-grain" aria-hidden="true"></div>
+
+      <header class="top-hud">
+        <div class="brand">
+          <button class="menu-button" id="menuButton" type="button" aria-label="暂停并打开菜单" aria-haspopup="dialog" aria-expanded="false" title="菜单 / MENU">
+            <i></i><i></i><i></i>
+          </button>
+          <span class="brand-copy">临“界”刹车<small>BRAKE / 500 M</small></span>
+        </div>
+        <div class="distance-hud" aria-label="距路灯">
+          <span class="distance-label"><i class="target-icon" aria-hidden="true"></i>距路灯 / TO POLE</span>
+          <div class="distance-readout"><strong id="distanceValue">500.0</strong><span>m</span></div>
+        </div>
+        <div class="hud-actions">
+          <span class="ev-chip"><i aria-hidden="true"></i>EV</span>
+          <button class="sound-button" id="soundToggle" type="button" aria-pressed="true" aria-label="关闭音效">
+            <span class="sound-glyph" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span id="soundLabel">SFX ON</span>
+          </button>
+        </div>
+      </header>
+
+      <div class="scene-messages">
+        <div class="alert-panel" id="snapBanner" role="alert" hidden>
+          <span class="alert-code">HYDRAULIC FAILURE / 1400 N</span>
+          <strong>刹车断裂</strong>
+          <span class="alert-detail">液压回路失效 · 电制动已切断 · 车辆无法减速</span>
+        </div>
+        <div class="coach" id="coach" role="status" hidden>
+          <span class="coach-knob" aria-hidden="true"></span>
+          <div><strong>按住圆形踏板</strong><small>按住升压 · 松开回弹 · 别超过 1400 N</small></div>
+          <span class="coach-key">SPACE</span>
+        </div>      </div>
+
+      <div class="countdown" id="countdown" hidden>
+        <span class="countdown-kicker" id="countdownKicker">SYSTEM READY</span>
+        <strong class="countdown-number" id="countdownNumber">3</strong>
+        <span class="countdown-hint" id="countdownHint">准备制动</span>
+      </div>
+    </section>
+
+    <section class="cockpit" id="cockpit" aria-label="车辆仪表">
+      <div class="cockpit-lip" aria-hidden="true"><span></span><i></i><span></span></div>
+      <div class="cockpit-inner">
+        <div class="instrument-row">
+          <div class="speed-cluster">
+            <div class="speedometer" id="speedometer">
+              <svg id="speedDial" viewBox="0 0 220 220" role="img" aria-label="速度表"></svg>
+              <div class="speed-digit"><strong id="speedValue"><span id="speedWhole">120</span><span class="speed-fraction" id="speedFraction">.0</span></strong><span>km/h</span></div>
+              <div class="speedometer-glass" aria-hidden="true"></div>
+            </div>
+            <span class="instrument-caption">SPEED / 速度</span>
+          </div>
+
+          <div class="assist-cluster">
+            <div class="cluster-system">
+              <span class="gear-indicator">D</span>
+              <span class="ready-indicator"><i></i>READY</span>
+            </div>
+            <div class="regen-module">
+              <div class="regen-head"><span>E‑REGEN</span><small>电制动</small></div>
+              <div class="regen-value"><strong id="regenValue">0</strong><span>N</span></div>
+              <div class="regen-track"><i id="regenFill"></i><b></b><b></b><b></b></div>
+            </div>
+            <div class="assist-status" id="assistStatus">电制动待命</div>
+            <div class="stop-readout">
+              <span>预计停车 / STOP</span>
+              <div><strong id="projectedStop">—</strong><em>m</em></div>
+            </div>
+          </div>
+
+          <div class="pedal-wrap">
+            <button class="pedal-control" id="brakeZone" type="button" aria-label="按住刹车踏板" aria-pressed="false">
+              <span class="pedal-view">
+                <canvas id="pedalScene" aria-hidden="true"></canvas>
+                <span class="pedal-scanline" aria-hidden="true"></span>
+                <span class="pedal-vignette" aria-hidden="true"></span>
+                <span class="pedal-press-glow" aria-hidden="true"></span>
+              </span>
+              <span class="pedal-bezel" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+              <span class="pedal-glass" aria-hidden="true"></span>
+            </button>
+            <span class="instrument-caption pedal-caption">按住刹车 / HOLD</span>
+          </div>
+        </div>
+
+        <div class="pressure-module">
+          <div class="pressure-head">
+            <div class="pressure-title"><span class="pressure-icon" aria-hidden="true"></span>液压制动力 / BRAKE PRESSURE</div>
+            <div class="pressure-readout">
+              <span class="pressure-state" id="pressureState">待命</span>
+              <strong><span id="forceValue">0</span><em>N</em></strong>
+            </div>
+          </div>
+          <div class="pressure-gauge" id="pressureGauge">
+            <div class="pressure-safe" aria-hidden="true"></div>
+            <div class="pressure-danger" aria-hidden="true"></div>
+            <div class="pressure-fill" id="pressureFill"></div>
+            <div class="pressure-segments" aria-hidden="true"></div>
+            <div class="pressure-threshold" aria-hidden="true"><i></i><span>1400 断点</span></div>
+            <div class="pressure-needle" id="pressureNeedle"></div>
+          </div>
+          <div class="pressure-scale" aria-hidden="true"><span>0</span><span>350</span><span>700</span><span>1050</span><span>1400 N</span></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="intro-overlay" id="introOverlay">
+      <div class="intro-scrim" aria-hidden="true"></div>
+      <div class="intro-content">
+        <header class="intro-head">
+          <div class="intro-brand">
+            <span class="brand-mark brand-mark--grand" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span>临“界”刹车<small>EV DYNAMIC BRAKE TEST</small></span>
+          </div>
+          <span class="intro-serial">TEST 500 / EV‑01</span>
+        </header>
+
+        <div class="intro-main">
+          <section class="intro-hero" aria-labelledby="gameTitle">
+            <p class="intro-eyebrow"><span></span>500 METERS · 120 KM/H · ZERO MARGIN</p>
+            <div class="title-lockup">
+              <div class="title-copy">
+                <h1 id="gameTitle">临<span class="title-quote">“</span>界<span class="title-quote">”</span><br>刹车</h1>
+                <p>EV EDITION · ZERO MARGIN</p>
+              </div>
+            </div>
+            <p class="intro-lead">一辆纯电 <span id="introVehicleName">SUV</span> 正以 120 km/h 驶向路灯。<br>电制动与液压制动协同工作，你有 500 米让车轮停转。</p>
+
+            <div class="vehicle-select" aria-labelledby="vehicleSelectTitle">
+              <div class="vehicle-select-head">
+                <span id="vehicleSelectTitle">测试车辆 / TEST VEHICLE</span>
+                <span id="selectedVehicleLabel">SUV</span>
+              </div>
+              <div class="vehicle-options">
+                <button class="vehicle-card is-selected" type="button" data-vehicle="suv" aria-pressed="true">
+                  <span class="vehicle-thumb" aria-hidden="true">
+                    <svg viewBox="0 0 160 54" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round">
+                      <path d="M12 37V26l15-1 15-11h60l20 10h25v13"/>
+                      <path d="M43 24h56M35 29h112" opacity=".55"/>
+                      <circle cx="46" cy="39" r="8"/><circle cx="120" cy="39" r="8"/>
+                      <path d="M46 31v16M120 31v16" opacity=".35"/>
+                      <path d="M108 15v10" opacity=".5"/>
+                    </svg>
+                  </span>
+                  <span class="vehicle-name"><strong>纯电 SUV</strong><small>URBAN / 4×4</small></span>
+                  <span class="vehicle-check" aria-hidden="true"></span>
+                </button>
+                <button class="vehicle-card" type="button" data-vehicle="mpv" aria-pressed="false">
+                  <span class="vehicle-thumb" aria-hidden="true">
+                    <svg viewBox="0 0 160 54" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round">
+                      <path d="M8 37V27l20-2 18-11h74l30 10v13"/>
+                      <path d="M48 23h74M20 29h126" opacity=".55"/>
+                      <circle cx="43" cy="39" r="8"/><circle cx="123" cy="39" r="8"/>
+                      <path d="M43 31v16M123 31v16" opacity=".35"/>
+                      <path d="M76 24v13M104 24v13" opacity=".5"/>
+                    </svg>
+                  </span>
+                  <span class="vehicle-name"><strong>豪华 MPV</strong><small>EXECUTIVE / LOUNGE</small></span>
+                  <span class="vehicle-check" aria-hidden="true"></span>
+                </button>
+              </div>
+            </div>
+
+            <div class="spec-rack" aria-label="测试参数">
+              <div><strong>120</strong><span>km/h<br>初始速度</span></div>
+              <div><strong>500</strong><span>m<br>可用距离</span></div>
+              <div><strong>1400</strong><span>N<br>液压断点</span></div>
+              <div><strong>34</strong><span>km/h<br>生死线</span></div>
+            </div>
+
+            <button class="start-button" id="startButton" type="button">
+              <span class="start-button-led" aria-hidden="true"></span>
+              <span class="start-button-copy"><strong>启动制动测试</strong><small>START / HOLD THE PEDAL</small></span>
+              <span class="start-button-arrow" aria-hidden="true">→</span>
+            </button>
+            <p class="intro-control-hint">按住底部圆形刹车踏板 · 也可使用空格键</p>
+          </section>
+
+          <aside class="intro-rules" aria-labelledby="rulesTitle">
+            <div class="rules-heading"><span>01</span><h2 id="rulesTitle">行驶须知 <small>/ RULES</small></h2></div>
+            <ol class="rule-list">
+              <li><span>01</span><div><strong>在路灯前停稳</strong><p>车速降到 0，且不碰路灯，即挑战成功。</p></div></li>
+              <li><span>02</span><div><strong>电制动会帮你</strong><p>液压踏板压力越高，E‑REGEN 电制动介入越强；两者共同缩短制动距离。</p></div></li>
+              <li><span>03</span><div><strong>不要压断液压系统</strong><p>压力超过 1400 N，刹车回路断裂，电制动也会被切断，本次直接失败。</p></div></li>
+              <li><span>04</span><div><strong>34 km/h 生死线</strong><p>若刹车完好仍撞上：低于 34 km/h 车损人存；达到或超过 34 km/h 起火爆炸。</p></div></li>
+            </ol>
+            <div class="ending-panel">
+              <div class="ending-title"><span>结局档案</span><span id="endingCount">0 / 3</span></div>
+              <div class="ending-list" id="introEndings">
+                <div class="ending-chip" data-ending="perfect"><i></i><span>完美停车</span><small>未解锁</small></div>
+                <div class="ending-chip" data-ending="lucky"><i></i><span>侥幸逃生</span><small>未解锁</small></div>
+                <div class="ending-chip" data-ending="burn"><i></i><span>烈焰终局</span><small>未解锁</small></div>
+              </div>
+            </div>
+            <div class="system-checks" aria-hidden="true">
+              <span><i></i>液压回路 <b>ONLINE</b></span>
+              <span><i></i>E‑REGEN <b>ONLINE</b></span>
+              <span><i></i>碰撞测试 <b>ARMED</b></span>
+            </div>
+          </aside>
+        </div>
+
+        <footer class="intro-footer">
+          <span>HYDRAULIC 1400 N MAX</span>
+          <span>RE‑GEN ASSIST ENABLED</span>
+          <span>500 M / 120 KM/H</span>
+        </footer>
+      </div>
+    </div>
+
+    <div class="result-overlay" id="resultOverlay" hidden>
+      <div class="result-frame" id="resultFrame" role="dialog" aria-modal="true" aria-labelledby="resultTitle" tabindex="-1">
+        <div class="result-strip" aria-hidden="true"></div>
+        <div class="result-topline"><span id="resultKicker">TEST PASSED / 结局解锁</span><span id="resultCode">ENDING 01 / 03</span></div>
+        <header class="result-head">
+          <div><h2 id="resultTitle">完美停车</h2><p id="resultSub">ZERO BEFORE THE LIGHT</p></div>
+          <div class="result-stamp" id="resultStamp">PASS</div>
+        </header>
+        <p class="result-story" id="resultStory"></p>
+        <div class="result-stats" id="resultStats"></div>
+        <div class="result-meter">
+          <div class="result-meter-head"><span id="meterLabel">停车位置</span><b id="meterValue"></b></div>
+          <div class="result-meter-track"><div class="result-meter-fill" id="meterFill"></div><span class="result-meter-limit" id="meterLimit"></span></div>
+          <div class="result-meter-scale"><span id="meterScaleStart">起点</span><span class="result-meter-mid" id="meterScaleMid" hidden>34 生死线</span><span id="meterScaleEnd">路灯 · 500 m</span></div>
+        </div>
+        <div class="result-ending-box">
+          <div class="ending-title"><span>结局档案</span><span id="resultEndingCount">0 / 3</span></div>
+          <div class="ending-list" id="resultEndings">
+            <div class="ending-chip" data-ending="perfect"><i></i><span>完美停车</span><small>未解锁</small></div>
+            <div class="ending-chip" data-ending="lucky"><i></i><span>侥幸逃生</span><small>未解锁</small></div>
+            <div class="ending-chip" data-ending="burn"><i></i><span>烈焰终局</span><small>未解锁</small></div>
+          </div>
+        </div>
+        <div class="result-actions">
+          <button class="retry-button" id="retryButton" type="button"><span>再试一次</span><i aria-hidden="true">↻</i></button>
+          <button class="home-button" id="homeButton" type="button">返回规则</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="pause-overlay" id="pauseOverlay" hidden>
+      <div class="pause-frame" id="pauseFrame" role="dialog" aria-modal="true" aria-labelledby="pauseTitle" tabindex="-1">
+        <div class="pause-strip" aria-hidden="true"></div>
+        <div class="pause-topline">
+          <span>TEST PAUSED / 测试暂停</span>
+          <button class="pause-close" id="pauseClose" type="button" aria-label="继续游戏">×</button>
+        </div>
+        <h2 id="pauseTitle">暂停测试</h2>
+        <p class="pause-sub">当前车辆：<span id="pauseVehicle">纯电 SUV</span></p>
+        <div class="pause-actions">
+          <button class="pause-button pause-home" id="pauseHome" type="button">
+            <span><strong>回到开始页面</strong><small>MAIN MENU</small></span><i aria-hidden="true">↩</i>
+          </button>
+          <button class="pause-button pause-restart" id="pauseRestart" type="button">
+            <span><strong>重新开始</strong><small>RESTART RUN</small></span><i aria-hidden="true">↻</i>
+          </button>
+        </div>
+        <p class="pause-hint">按 ESC 或点击空白处继续</p>
+      </div>
+    </div>
+
+    <div class="screen-flash" id="screenFlash" aria-hidden="true"></div>
+  </main>
+
+  <script src="engine3d.js" defer></script>
+  <script src="world.js" defer></script>
+  <script src="game.js" defer></script>
+</body>
+</html>
